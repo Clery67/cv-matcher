@@ -3,8 +3,8 @@ import pdfplumber
 import docx2txt
 import openai
 
-# " Colle ici ta clé OpenAI entre guillemets
-openai.api_key = "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"
+
+# openai.api_key = "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"
 
 def extraire_texte_fichier(uploaded_file):
     """
