@@ -1,4 +1,51 @@
 import streamlit as st
+import pdfplumber
+import docx2txt
+import openai
+
+# " Colle ici ta clé OpenAI entre guillemets
+openai.api_key = "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"
+
+def extraire_texte_fichier(uploaded_file):
+    """
+    Lit le PDF ou DOCX uploadé et renvoie tout le texte.
+    """
+    if uploaded_file.name.lower().endswith(".pdf"):
+        texte = ""
+        with pdfplumber.open(uploaded_file) as pdf:
+            for page in pdf.pages:
+                page_txt = page.extract_text()
+                if page_txt:
+                    texte += page_txt + "\n"
+    elif uploaded_file.name.lower().endswith(".docx"):
+        texte = docx2txt.process(uploaded_file)
+    else:
+        texte = ""
+    return texte.strip()
+
+def analyser_cahier_des_charges(texte):
+    """
+    Envoie le texte à l'API OpenAI pour extraire 
+    poste, compétences, expérience et localisation.
+    """
+    prompt = f"""
+    Tu es un assistant RH. Analyse ce cahier des charges et extrait :
+    - Le poste ou métier ciblé
+    - Les compétences clés
+    - L’expérience minimale demandée (en années)
+    - Les villes ou régions mentionnées
+
+    Cahier des charges :
+    {texte}
+
+    Réponds sous forme de JSON.
+    """
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    return response.choices[0].message.content
 
 st.set_page_config(page_title="Recherche intelligente de CV", layout="wide")
 st.title("Recherche intelligente de CV")
@@ -6,8 +53,19 @@ st.title("Recherche intelligente de CV")
 # === 1. Upload du cahier des charges ===
 st.header("1. Cahier des charges client")
 uploaded_file = st.file_uploader("Déposez ici le fichier PDF ou Word", type=["pdf", "docx"])
+
 if uploaded_file:
+    # 1. Extraction du texte
+    texte = extraire_texte_fichier(uploaded_file)
     st.success("Fichier chargé : " + uploaded_file.name)
+    st.text_area("📄 Texte extrait", texte, height=200)
+
+    # 2. Bouton d'analyse IA
+    if st.button("🧠 Analyser automatiquement avec IA"):
+        with st.spinner("Analyse en cours…"):
+            resultat_ia = analyser_cahier_des_charges(texte)
+        st.subheader("Résultat de l'analyse IA")
+        st.code(resultat_ia, language="json")
 
 # === 2. Filtres manuels ===
 st.header("2. Filtres manuels")
